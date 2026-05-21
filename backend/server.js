@@ -1,0 +1,181 @@
+const express = require("express");
+const cors = require("cors");
+
+const app = express();
+
+const PORT = 3000;
+
+app.use(cors());
+app.use(express.json());
+
+app.use((req, res, next) => {
+  console.log(`Request Method: ${req.method}`);
+  next();
+});
+
+let tasks = [];
+
+let contactMessages = [];
+
+let patients = [
+  {
+    id: 1,
+    name: "Arun Kumar",
+    age: 25,
+    disease: "Fever",
+  },
+
+  {
+    id: 2,
+    name: "Priya Sharma",
+    age: 32,
+    disease: "Diabetes",
+  },
+  {
+    name: "Kishor",
+    age: 20,
+    disease: "Cold",
+  },
+  {
+    name: "Arun Updated",
+    age: 28,
+    disease: "Fever",
+  },
+];
+
+app.get("/", (req, res) => {
+  res.send("Hospital Backend Running Successfully");
+});
+
+app.get("/tasks", (req, res) => {
+  res.json(tasks);
+});
+
+app.post("/tasks", (req, res) => {
+  const { text } = req.body;
+
+  if (!text) {
+    return res.status(400).json({
+      message: "Task field required",
+    });
+  }
+
+  const newTask = {
+    id: Date.now(),
+    text,
+  };
+
+  tasks.push(newTask);
+
+  res.status(201).json({
+    message: "Task Added Successfully",
+    task: newTask,
+  });
+});
+
+app.delete("/tasks/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+
+  tasks = tasks.filter((task) => task.id !== id);
+
+  res.json({
+    message: "Task Deleted Successfully",
+  });
+});
+
+app.post("/contact", (req, res) => {
+  const { name, email, message } = req.body;
+
+  if (!name || !email || !message) {
+    return res.status(400).json({
+      message: "All fields are required",
+    });
+  }
+
+  const newMessage = {
+    id: Date.now(),
+    name,
+    email,
+    message,
+  };
+
+  contactMessages.push(newMessage);
+
+  res.status(201).json({
+    message: "Message Sent Successfully",
+    data: newMessage,
+  });
+});
+
+app.get("/patients", (req, res) => {
+  res.json(patients);
+});
+
+app.post("/patients", (req, res) => {
+  const { name, age, disease } = req.body;
+
+  if (!name || !age || !disease) {
+    return res.status(400).json({
+      message: "All patient fields are required",
+    });
+  }
+
+  const newPatient = {
+    id: Date.now(),
+    name,
+    age,
+    disease,
+  };
+
+  patients.push(newPatient);
+
+  res.status(201).json({
+    message: "Patient Added Successfully",
+    patient: newPatient,
+  });
+});
+
+app.put("/patients/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+
+  const { name, age, disease } = req.body;
+
+  const patient = patients.find((p) => p.id === id);
+
+  if (!patient) {
+    return res.status(404).json({
+      message: "Patient Not Found",
+    });
+  }
+
+  patient.name = name || patient.name;
+  patient.age = age || patient.age;
+  patient.disease = disease || patient.disease;
+
+  res.json({
+    message: "Patient Updated Successfully",
+    patient,
+  });
+});
+
+app.delete("/patients/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+
+  const patientExists = patients.find((p) => p.id === id);
+
+  if (!patientExists) {
+    return res.status(404).json({
+      message: "Patient Not Found",
+    });
+  }
+
+  patients = patients.filter((p) => p.id !== id);
+
+  res.json({
+    message: "Patient Deleted Successfully",
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
