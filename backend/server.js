@@ -1,12 +1,29 @@
 const express = require("express");
 const cors = require("cors");
+const mongoose = require("mongoose");
+require("dotenv").config();
 
 const app = express();
 
-const PORT = 3000;
-
 app.use(cors());
 app.use(express.json());
+
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log("MongoDB Connected Successfully");
+  })
+  .catch((err) => {
+    console.log(err);
+  });
+
+const patientSchema = new mongoose.Schema({
+  name: String,
+  age: Number,
+  disease: String,
+});
+
+const Patient = mongoose.model("Patient", patientSchema);
 
 app.use((req, res, next) => {
   console.log(`Request Method: ${req.method}`);
@@ -16,32 +33,6 @@ app.use((req, res, next) => {
 let tasks = [];
 
 let contactMessages = [];
-
-let patients = [
-  {
-    id: 1,
-    name: "Arun Kumar",
-    age: 25,
-    disease: "Fever",
-  },
-
-  {
-    id: 2,
-    name: "Priya Sharma",
-    age: 32,
-    disease: "Diabetes",
-  },
-  {
-    name: "Kishor",
-    age: 20,
-    disease: "Cold",
-  },
-  {
-    name: "Arun Updated",
-    age: 28,
-    disease: "Fever",
-  },
-];
 
 app.get("/", (req, res) => {
   res.send("Hospital Backend Running Successfully");
@@ -107,74 +98,101 @@ app.post("/contact", (req, res) => {
   });
 });
 
-app.get("/patients", (req, res) => {
-  res.json(patients);
-});
+app.get("/patients", async (req, res) => {
+  try {
+    const patients = await Patient.find();
 
-app.post("/patients", (req, res) => {
-  const { name, age, disease } = req.body;
-
-  if (!name || !age || !disease) {
-    return res.status(400).json({
-      message: "All patient fields are required",
+    res.json(patients);
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
     });
   }
-
-  const newPatient = {
-    id: Date.now(),
-    name,
-    age,
-    disease,
-  };
-
-  patients.push(newPatient);
-
-  res.status(201).json({
-    message: "Patient Added Successfully",
-    patient: newPatient,
-  });
 });
 
-app.put("/patients/:id", (req, res) => {
-  const id = parseInt(req.params.id);
+app.post("/patients", async (req, res) => {
+  try {
+    const { name, age, disease } = req.body;
 
-  const { name, age, disease } = req.body;
+    if (!name || !age || !disease) {
+      return res.status(400).json({
+        message: "All patient fields are required",
+      });
+    }
 
-  const patient = patients.find((p) => p.id === id);
+    const newPatient = new Patient({
+      name,
+      age,
+      disease,
+    });
 
-  if (!patient) {
-    return res.status(404).json({
-      message: "Patient Not Found",
+    await newPatient.save();
+
+    res.status(201).json({
+      message: "Patient Added Successfully",
+      patient: newPatient,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
     });
   }
-
-  patient.name = name || patient.name;
-  patient.age = age || patient.age;
-  patient.disease = disease || patient.disease;
-
-  res.json({
-    message: "Patient Updated Successfully",
-    patient,
-  });
 });
 
-app.delete("/patients/:id", (req, res) => {
-  const id = parseInt(req.params.id);
+app.put("/patients/:id", async (req, res) => {
+  try {
+    const { name, age, disease } = req.body;
 
-  const patientExists = patients.find((p) => p.id === id);
+    const updatedPatient = await Patient.findByIdAndUpdate(
+      req.params.id,
+      {
+        name,
+        age,
+        disease,
+      },
+      { new: true },
+    );
 
-  if (!patientExists) {
-    return res.status(404).json({
-      message: "Patient Not Found",
+    if (!updatedPatient) {
+      return res.status(404).json({
+        message: "Patient Not Found",
+      });
+    }
+
+    res.json({
+      message: "Patient Updated Successfully",
+      patient: updatedPatient,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
     });
   }
-
-  patients = patients.filter((p) => p.id !== id);
-
-  res.json({
-    message: "Patient Deleted Successfully",
-  });
 });
+
+/* DELETE PATIENT */
+
+app.delete("/patients/:id", async (req, res) => {
+  try {
+    const deletedPatient = await Patient.findByIdAndDelete(req.params.id);
+
+    if (!deletedPatient) {
+      return res.status(404).json({
+        message: "Patient Not Found",
+      });
+    }
+
+    res.json({
+      message: "Patient Deleted Successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
